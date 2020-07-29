@@ -6,6 +6,8 @@ from typing import Optional, List, Union
 
 import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
+from adafruit_max31865 import MAX31865
+
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
 

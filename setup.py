@@ -21,7 +21,8 @@ setuptools.setup(
     python_requires=">=3.7",
     license="MIT",
     install_requires=[
-        'adafruit-circuitpython-ads1x15>=2.2.1'
+        'adafruit-circuitpython-ads1x15>=2.2.2',
+        'adafruit-circuitpython-max31865>=2.2.3',
         'filterpy>=1.4.5',
         'numpy>=1.18.4',
     ]
