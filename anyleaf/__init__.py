@@ -52,6 +52,11 @@ class CalPtOrp:
     V: float
     ORP: float
 
+@dataclass
+class CalPtT
+    V: float
+    T: float  # Temp in C
+
 
 @dataclass
 class PhSensor:
@@ -250,6 +255,33 @@ class OrpSensor:
 
 
 @dataclass
+class Rtd:
+    sensor: MAX31865
+    cal_1: CalPtT
+
+    def __init__(self, spi, cs, wires=3, pt1000=False):
+        rtd_nominal = 100 if pt1000 else 1_000
+        ref_resistor = 3_000 if pt1000 else 300
+        self.sensor = MAX31865(
+            spi,
+            cs,
+            wires=wires,
+            rtd_nominal=rtd_nominal,
+            ref_resistor=ref_resistor
+        )
+
+    def read(self) -> f32:
+        """Read measured temperature"""
+        return self.sensor.temperature
+
+    def read_resistance(self) -> f32:
+        """Read measured resistance of the RTD"""
+        return self.sensor.resistance
+
+    def calibrate(self) -> None:
+        pass
+
+@dataclass
 class Readings:
     # todo: Should these (And the readings in general) be Optional[float] to deal
     # todo with hardware errors?
@@ -258,40 +290,40 @@ class Readings:
     ec: float
     ORP: float
 
-
-@dataclass
-class WaterMonitor:
-    """We use this to pull data from the Water Monitor to an external program over I2C.
-    It interacts directly with the ADCs, and has no interaction to the Water Monitor's MCU."""
-    ph_temp: PhSensor  # at 0x48. Inludes the temp sensor at input A3.
-    orp_ec: OrpSensor  # at 0x49. Inlucdes the ec sensor at input A3.
-
-    def __init__(self, i2c, dt: float):
-        self.ph_temp = PhSensor(i2c, dt)
-        self.orp_ec = OrpSensor(i2c, dt, address=0x49)
-
-    def read_all(self) -> Readings:
-        """Read all sensors."""
-        T = self.ph_temp.read_temp_pt100()
-        pH = self.ph_temp.read(OffBoard(T))
-        ORP = self.orp_ec.read()
-        ec = self.orp_ec.read_ec(OffBoard(T))
-
-        return Readings(pH, T, ec, ORP)
-
-    def read_ph(self) -> float:
-        t = OffBoard(self.ph_temp.read_temp_pt100())
-        return self.ph_temp.read(t)
-
-    def read_temp(self) -> float:
-        return self.ph_temp.read_temp_pt100()
-
-    def read_orp(self) -> float:
-        return self.orp_ec.read()
-
-    def read_ec(self) -> float:
-        t = OffBoard(self.ph_temp.read_temp_pt100())
-        return sself.orp_ec.read_ec(t)
+#
+# @dataclass
+# class WaterMonitor:
+#     """We use this to pull data from the Water Monitor to an external program over I2C.
+#     It interacts directly with the ADCs, and has no interaction to the Water Monitor's MCU."""
+#     ph_temp: PhSensor  # at 0x48. Inludes the temp sensor at input A3.
+#     orp_ec: OrpSensor  # at 0x49. Inlucdes the ec sensor at input A3.
+#
+#     def __init__(self, i2c, dt: float):
+#         self.ph_temp = PhSensor(i2c, dt)
+#         self.orp_ec = OrpSensor(i2c, dt, address=0x49)
+#
+#     def read_all(self) -> Readings:
+#         """Read all sensors."""
+#         T = self.ph_temp.read_temp_pt100()
+#         pH = self.ph_temp.read(OffBoard(T))
+#         ORP = self.orp_ec.read()
+#         ec = self.orp_ec.read_ec(OffBoard(T))
+#
+#         return Readings(pH, T, ec, ORP)
+#
+#     def read_ph(self) -> float:
+#         t = OffBoard(self.ph_temp.read_temp_pt100())
+#         return self.ph_temp.read(t)
+#
+#     def read_temp(self) -> float:
+#         return self.ph_temp.read_temp_pt100()
+#
+#     def read_orp(self) -> float:
+#         return self.orp_ec.read()
+#
+#     def read_ec(self) -> float:
+#         t = OffBoard(self.ph_temp.read_temp_pt100())
+#         return sself.orp_ec.read_ec(t)
 
 
 def lg(
