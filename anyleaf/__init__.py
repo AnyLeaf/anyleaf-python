@@ -254,14 +254,43 @@ class OrpSensor:
         self.cal = CalPtOrp(0.4, 400.0)
 
 
+class RtdType(Enum):
+    PT100 = auto()
+    PT1000 = auto()
+
+
+class RtdWires(Enum):
+    TWO = auto()
+    THREE = auto()
+    FOUR = auto()
+
+
 @dataclass
 class Rtd:
     sensor: MAX31865
-    cal_1: CalPtT
+    type_: RtdType
+    wires: RtdWires
+    cal: CalPtT
 
-    def __init__(self, spi, cs, wires=3, pt1000=False):
-        rtd_nominal = 100 if pt1000 else 1_000
-        ref_resistor = 3_000 if pt1000 else 300
+    def __init__(self, spi, cs, type_: RtdType, wires_: RtdWires):
+        if type_ == RtdType.PT100:
+            rtd_nominal = 100
+            ref_resistor = 300
+        elif type_ == RtdType.PT1000:
+            rtd_nominal = 1_000
+            ref_resistor = 3_000
+        else:
+            raise TypeError("Invalid RtdType: Must be `RtdType.PT100`, or `RtdType.PT1000`.")
+
+        if wires_ == RtdWires.TWO:
+            wires = 2
+        elif wires_ == RtdWires.THREE:
+            wires = 3
+        elif wires_ == RtdWires.FOUR:
+            wires = 4
+        else:
+            raise TypeError("Invalid RtdWires: Must be `RtdWires.TWO`, `RtdWires.THREE`, or `RtdWires.FOUR`.")
+
         self.sensor = MAX31865(
             spi,
             cs,
@@ -270,11 +299,11 @@ class Rtd:
             ref_resistor=ref_resistor
         )
 
-    def read(self) -> f32:
+    def read(self) -> float:
         """Read measured temperature"""
         return self.sensor.temperature
 
-    def read_resistance(self) -> f32:
+    def read_resistance(self) -> float:
         """Read measured resistance of the RTD"""
         return self.sensor.resistance
 
