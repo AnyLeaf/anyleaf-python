@@ -10,14 +10,14 @@ def main():
     # `cs` is the pin connected to the `CS` pin of the module. It can be any
     # GPIO pin.
     cs = digitalio.DigitalInOut(board.D5)
-    rtd = Rtd(spi, cs, RtdType.PT100, RtdWires.THREE)  # 3-wire pt100
-    # rtd = Rtd(spi, cs, RtdType.Pt1000, RtdWires.TWO)  # 2-wire pt1000
+    sensor = Rtd(spi, cs, RtdType.PT100, RtdWires.THREE)  # 3-wire pt100
+    # sensor = Rtd(spi, cs, RtdType.Pt1000, RtdWires.TWO)  # 2-wire pt1000
 
     while True:
-        print(f"Temp: {rtd.read()} Celsius")
+        print(f"Temp: {sensor.read()} Celsius")
 
         # To display the measured resistance:
-        print(f"Resistance: {rtd.read_resistance()}Ω")
+        print(f"Resistance: {sensor.read_resistance()} Ω")
 
         time.sleep(1)
 
