@@ -2,7 +2,7 @@
 
 # Anyleaf
 
-## For use with the AnyLeaf pH sensor in Python
+## For use with the AnyLeaf pH and RTD sensors in Python
 [Homepage](https://anyleaf.org)
 
 ## Quickstart
