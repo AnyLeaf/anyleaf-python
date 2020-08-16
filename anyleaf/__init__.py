@@ -53,7 +53,7 @@ class CalPtOrp:
     ORP: float
 
 @dataclass
-class CalPtT
+class CalPtT:
     V: float
     T: float  # Temp in C
 
