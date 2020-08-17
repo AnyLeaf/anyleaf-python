@@ -3,7 +3,7 @@
 [tool.pyflow]
 name = "anyleaf"
 py_version = "3.8"
-version = "0.1.7.1"
+version = "0.1.8"
 authors = ["Anyleaf <anyleaf@anyleaf.org>"]
 description = "Support for the AnyLeaf pH module"
 keywords = ["scientific", "measurement", "ph", "anyleaf"]
@@ -15,7 +15,8 @@ license = "MIT"
 adafruit-circuitpython-ads1x15="^2.2.2"
 adafruit-circuitpython-max31865="^2.2.3"
 filterpy="^1.4.5"
-numpy="^1.18.4"
+numpy="^1.19.1"
+scipy="^1.5.2"
 
 
 [tool.pyflow.dev-dependencies]

@@ -11,7 +11,7 @@ def main():
     # GPIO pin.
     cs = digitalio.DigitalInOut(board.D5)
     sensor = Rtd(spi, cs, RtdType.PT100, RtdWires.THREE)  # 3-wire pt100
-    # sensor = Rtd(spi, cs, RtdType.Pt1000, RtdWires.TWO)  # 2-wire pt1000
+    # sensor = Rtd(spi, cs, RtdType.PT1000, RtdWires.TWO)  # 2-wire pt1000
 
     while True:
         print(f"Temp: {sensor.read()} Celsius")

@@ -310,6 +310,7 @@ class Rtd:
     def calibrate(self) -> None:
         pass
 
+
 @dataclass
 class Readings:
     # todo: Should these (And the readings in general) be Optional[float] to deal
