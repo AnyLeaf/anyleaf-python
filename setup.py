@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="anyleaf",
-    version="0.1.8",
+    version="0.1.8.1",
     author="Anyleaf",
     author_email="anyleaf@anyleaf.org",
     description="Driver for the Anyleaf pH sensor",
@@ -23,9 +23,6 @@ setuptools.setup(
     install_requires=[
         'adafruit-circuitpython-ads1x15>=2.2.2',
         'adafruit-circuitpython-max31865>=2.2.3',
-        # 'adafruit-blinka>=5.2.',  # Eables micro/circuitpython support.
         'filterpy>=1.4.5',
-        'numpy>=1.19.1',  # For filterpy
-        'scipy>=1.5.2',  # For filterpy
     ]
 )

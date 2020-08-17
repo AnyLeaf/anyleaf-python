@@ -7,11 +7,11 @@
 
 ## Quickstart
 To get started as quickly as possible, run these commands from a terminal:
+- `sudo apt install python3-scipy`
 - `pip3 install anyleaf`
-- `pip3 install filterpy`
-- `git clone https://github.com/anyleaf/ph-python.git`
+- `git clone https://github.com/anyleaf/anyleaf-python.git`
 - `cd ph-python/examples`
-- `python3 ex.py`
+- `python3 ph_orp.py`
 
 pH readings will display in your terminal.
 
