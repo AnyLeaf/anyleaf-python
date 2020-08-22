@@ -10,7 +10,7 @@ To get started as quickly as possible, run these commands from a terminal:
 - `sudo apt install python3-scipy`
 - `pip3 install anyleaf`
 - `git clone https://github.com/anyleaf/anyleaf-python.git`
-- `cd ph-python/examples`
+- `cd anyleaf-python/examples`
 - `python3 ph_orp.py`
 
 pH readings will display in your terminal.
