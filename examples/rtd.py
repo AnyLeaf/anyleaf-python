@@ -14,7 +14,7 @@ def main():
     # sensor = Rtd(spi, cs, RtdType.PT1000, RtdWires.TWO)  # 2-wire pt1000
 
     while True:
-        print(f"Temp: {sensor.read()} Celsius")
+        print(f"Temp: {sensor.read()} °C")
 
         # To display the measured resistance:
         print(f"Resistance: {sensor.read_resistance()} Ω")

@@ -22,7 +22,6 @@ PH_TEMP_C = -0.05694  # pH/(V*T). V is in volts, and T is in °C
 
 class CalSlot(Enum):
     """Keeps our calibration organized, so we track when to overwrite."""
-
     ONE = auto()
     TWO = auto()
     THREE = auto()
@@ -77,8 +76,8 @@ class PhSensor:
         self.filter = filter.create(dt)
         self.dt = dt  # Store for when we update the filter's Q.
         self.last_meas: 7.0
-        self.cal_1 = CalPt(0, 7.0, 23)
-        self.cal_2 = CalPt(0.17, 4.0, 23)
+        self.cal_1 = CalPt(0., 7.0, 23.)
+        self.cal_2 = CalPt(0.17, 4.0, 23.)
         self.cal_3 = None
 
     def predict(self) -> None:
@@ -165,8 +164,8 @@ class PhSensor:
         self.cal_3 = pt2
 
     def reset_calibration(self):
-        self.cal_1 = CalPt(0.0, 7.0, 25.0)
-        self.cal_2 = CalPt(0.17, 4.0, 25.0)
+        self.cal_1 = CalPt(0.0, 7.0, 23.0)
+        self.cal_2 = CalPt(0.17, 4.0, 23.0)
         self.cal_3 = None
 
 
