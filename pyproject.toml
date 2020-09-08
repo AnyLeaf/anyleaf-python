@@ -7,7 +7,7 @@ version = "0.1.8"
 authors = ["Anyleaf <anyleaf@anyleaf.org>"]
 description = "Support for the AnyLeaf pH module"
 keywords = ["scientific", "measurement", "ph", "anyleaf"]
-homepage = "https://github.com/anyleaf/anyleaf"
+homepage = "https://anyleaf.org"
 license = "MIT"
 
 

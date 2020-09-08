@@ -11,7 +11,7 @@ setuptools.setup(
     description="Driver for the Anyleaf pH sensor",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/anyleaf/anyleaf_ph",
+    url="https://anyleaf.org",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
