@@ -7,8 +7,9 @@
 
 ## Quickstart
 To get started as quickly as possible on Raspberry Pi:
-- Activate I2C: Run `sudo raspi-config`. Select `Interfacing Options` → `I2C` → `Yes`.
-- Reboot.
+- Activate I2C (pH and ORP module): Run `sudo raspi-config`. Select `Interfacing Options` → `I2C` → `Yes`.
+- Activate SPI (RTD temp module): Same as above, but select `SPI` instead of `I2C`.
+- Reboot
 
 Then run these commands from a terminal:
 - `sudo apt install python3-scipy`
