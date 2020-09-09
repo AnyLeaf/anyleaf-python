@@ -6,7 +6,11 @@
 [Homepage](https://anyleaf.org)
 
 ## Quickstart
-To get started as quickly as possible, run these commands from a terminal:
+To get started as quickly as possible on Raspberry Pi:
+- Activate I2C: Run `sudo raspi-config`. Select `Interfacing Options` → `I2C` → `Yes`.
+- Reboot.
+
+Then run these commands from a terminal:
 - `sudo apt install python3-scipy`
 - `pip3 install anyleaf`
 - `git clone https://github.com/anyleaf/anyleaf-python.git`
