@@ -14,7 +14,7 @@ def main():
 
     # If you connect multiple AnyLeaf modules on the same I²C bus, set one's
     # jumper to the `0x49` position, and specify this as below:
-    orp_sensor = OrpSensor(i2c, delay, address=0x49)
+    # orp_sensor = OrpSensor(i2c, delay, address=0x49)
 
     # 2 or 3 pt calibration both give acceptable results.
     # Calibrate with known values. (voltage, pH, temp in °C).
@@ -34,7 +34,7 @@ def main():
 
     # ORP setup is simpler: There's only 1 calibration point, and no
     # temperature compensation:
-    orp_sensor.calibrate_all(CalPtOrp(0., 7., 25.))
+    # orp_sensor.calibrate_all(CalPtOrp(0.4, 400.0))
 
     # Ideally, store the calibration parameters somewhere, so they persist
     # between program runs.
@@ -43,10 +43,10 @@ def main():
 
     while True:
         pH = ph_sensor.read(OnBoard())
-        OrP = orp_sensor.read(ORP)
+        # ORP = orp_sensor.read()
         # To use an offboard temperature measurement `ph_sensor.read(OffBoard(30.))`
         print(f"pH: {pH}")
-        print(f"ORP: {ORP}")
+        # print(f"ORP: {ORP}")
 
         time.sleep(delay)
 
