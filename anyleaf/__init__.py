@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import Optional, List, Union
+import struct
 
 import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
@@ -10,6 +11,7 @@ from adafruit_max31865 import MAX31865
 
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
+import serial
 
 from . import filter
 
@@ -18,6 +20,19 @@ DISCRETE_PH_JUMP_THRESH = 0.2
 DISCRETE_ORP_JUMP_THRESH = 30.0
 # Compensate for temperature diff between readings and calibration.
 PH_TEMP_C = -0.05694  # pH/(V*T). V is in volts, and T is in °C
+
+
+# These 3 bits are used for requesting data from the water monitor via USB
+# serial. They must match the codes in the Water Monitor firmware.
+# READINGS_REQ_BIT = 69
+READINGS_SIZE_WM = 20
+READINGS_SIZE_EC = 11
+SUCCESS_MSG = [50, 50, 50]
+ERROR_MSG = [99, 99, 99]
+MSG_START_BITS = [100, 150]
+MSG_END_BITS = [200]
+
+SERIAL_TIMEOUT = 100_000  # loops
 
 
 class CalSlot(Enum):
@@ -314,45 +329,162 @@ class Rtd:
 class Readings:
     # todo: Should these (And the readings in general) be Optional[float] to deal
     # todo with hardware errors?
-    pH: float
-    T: float
-    ec: float
-    ORP: float
+    pH: Optional[float]
+    T: Optional[float]
+    ec: Optional[float]
+    ORP: Optional[float]
 
-#
-# @dataclass
-# class WaterMonitor:
-#     """We use this to pull data from the Water Monitor to an external program over I2C.
-#     It interacts directly with the ADCs, and has no interaction to the Water Monitor's MCU."""
-#     ph_temp: PhSensor  # at 0x48. Inludes the temp sensor at input A3.
-#     orp_ec: OrpSensor  # at 0x49. Inlucdes the ec sensor at input A3.
-#
-#     def __init__(self, i2c, dt: float):
-#         self.ph_temp = PhSensor(i2c, dt)
-#         self.orp_ec = OrpSensor(i2c, dt, address=0x49)
-#
-#     def read_all(self) -> Readings:
-#         """Read all sensors."""
-#         T = self.ph_temp.read_temp_pt100()
-#         pH = self.ph_temp.read(OffBoard(T))
-#         ORP = self.orp_ec.read()
-#         ec = self.orp_ec.read_ec(OffBoard(T))
-#
-#         return Readings(pH, T, ec, ORP)
-#
-#     def read_ph(self) -> float:
-#         t = OffBoard(self.ph_temp.read_temp_pt100())
-#         return self.ph_temp.read(t)
-#
-#     def read_temp(self) -> float:
-#         return self.ph_temp.read_temp_pt100()
-#
-#     def read_orp(self) -> float:
-#         return self.orp_ec.read()
-#
-#     def read_ec(self) -> float:
-#         t = OffBoard(self.ph_temp.read_temp_pt100())
-#         return sself.orp_ec.read_ec(t)
+    @classmethod
+    def from_bytes(cls, buf: bytes) -> 'Readings':
+        """Read a 20-byte set. Each reading is 5 bytes: 1 for ok/error, the other
+        4 for a float."""
+        result = cls(None, None, None, None)
+
+        if buf[0] == OK_BIT:
+            result.T = struct.unpack('f', buf[1:5])
+
+        if buf[5] == OK_BIT:
+            result.pH = struct.unpack('f', buf[6:10])
+
+        if buf[10] == OK_BIT:
+            result.ORP = struct.unpack('f', buf[11:15])
+
+        if buf[15] == OK_BIT:
+            result.ec = struct.unpack('f', buf[16:20])
+
+        return result
+
+
+class CellConstant(Enum):
+    """Cell constant, in 1/cm. Aka, K. Numerical value is the serialized bit value."""
+    K0_01 = 0
+    K0_1 = 1
+    K1_0 = 2
+    K10 = 3
+
+    def value(self) -> float:
+        """Return the conductivity value"""
+        if self == CellConstant.K0_01:
+            return 0.01
+        elif self == CellConstant.K0_1:
+            return 0.1
+        elif self == CellConstant.K1_0:
+            return 1.
+        else:
+            return 10.
+
+class ExcMode(Enum):
+    """Excitation mode: Always on, or only when measuring. Numerical value is
+    the serialized bit value. This mirrors the rust equivalent"""
+    READING_ONLY = 0,
+    ALWAYS_ON = 1
+
+
+@dataclass
+class EcSensor:
+    """An interface for our EC module, which communicates a serial message over UART."""
+    ser: serial.Serial
+    K: CellConstant
+    excitation_mode: ExcMode
+
+    def __init__(self, K: float=1.0, exc_mode = ExcMode.READING_ONLY):
+        self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
+
+        if K == 0.01:
+            self.K = CellConstant.K0_01
+        elif K == 0.1:
+            self.K = CellConstant.K0_1
+        elif K == 1.0:
+            self.K = CellConstant.K1_0
+        elif K == 10.0:
+            self.K = CellConstant.K10
+        else:
+            raise AttributeError("Cell constant (K) must be 0.01, 0.1, 1.0, or 10.0.")
+
+        self.set_K(self.K)
+
+        self.excitation_mode = exc_mode
+        self.set_excitation_mode(self.excitation_mode)
+
+    def read(self) -> float:
+        """Take an ec reading"""
+        for _ in range(SERIAL_TIMEOUT):
+            self.ser.write(MSG_START_BITS + 10 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+            response = self.ser.read(READINGS_SIZE_EC)
+            if response:
+                ec = response * self.K.value()  # µS/cm
+                # todo: Calibration, temp compensation, and units
+                return ec
+
+    def read_temp(self) -> float:
+        """Take an reading from the onboard air temperature sensor"""
+        # todo DRY
+        for _ in range(SERIAL_TIMEOUT):
+            self.ser.write(MSG_START_BITS + 11 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+            response = self.ser.read(READINGS_SIZE_EC)
+            if response:
+                return Readings.from_bytes(response)
+
+    def set_excitation_mode(self, mode: ExcMode) -> float:
+        """Set probe conductivity constant"""
+        # todo: Dry message sending
+        self.K = K
+        for _ in range(SERIAL_TIMEOUT):
+            self.ser.write(MSG_START_BITS + 12 + int(mode) + [0, 0, 0, 0, 0] + MSG_END_BITS)
+            response = self.ser.read(READINGS_SIZE_EC)
+            if response:
+               return # todo errors etc
+
+        raise AttributeError("Problem getting data.")
+
+    def set_K(self, K: CellConstant) -> float:
+        """Set probe conductivity constant"""
+        # todo: Dry message sending
+        self.K = K
+        for _ in range(SERIAL_TIMEOUT):
+            self.ser.write(MSG_START_BITS + 13 + int(K) + [0, 0, 0, 0, 0] + MSG_END_BITS)
+            response = self.ser.read(READINGS_SIZE_EC)
+            if response:
+                return # todo errors etc
+
+        raise AttributeError("Problem getting data.")
+
+
+
+@dataclass
+class WaterMonitor:
+    """We use this to pull readings from the Water Monitor over a USB COM serial connection.
+    Note that this is not an equivalent for the `WaterMonitor` struct in the Rust drivers."""
+    ser: serial.Serial
+
+    def __init__(self):
+        # todo: Find the right comm port. #todo: Windows vis Linux
+        # self.ser = serial.Serial('/dev/ttyUSB0')
+        self.ser = serial.Serial('COM7', 19200, timeout=10)
+
+    def read_all(self) -> Readings:
+        """Read all sensors."""
+        for _ in range(SERIAL_TIMEOUT):
+            self.ser.write(MSG_START_BITS + MSG_END_BITS)
+            response = self.ser.read(READINGS_SIZE_WM)
+            if response:
+                return Readings.from_bytes(response)
+
+        raise AttributeError("Problem getting data.")
+
+    # Todo: These should be special data requests, not just pulling part of read_all.
+    # todo. The current solution works for now.
+    def read_ph(self) -> float:
+        return self.read_all().pH
+
+    def read_temp(self) -> float:
+        return self.read_all().T
+
+    def read_orp(self) -> float:
+        return self.read_all().ORP
+
+    def read_ec(self) -> float:
+        return self.read_all().ec
 
 
 def lg(
