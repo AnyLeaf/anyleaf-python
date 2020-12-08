@@ -12,6 +12,7 @@ from adafruit_max31865 import MAX31865
 from filterpy.kalman import KalmanFilter
 from filterpy.common import Q_discrete_white_noise
 import serial
+from serial.tools import list_ports
 
 from . import filter
 
@@ -29,6 +30,10 @@ READINGS_SIZE_WM = 20
 READINGS_SIZE_EC = 11
 SUCCESS_MSG = [50, 50, 50]
 ERROR_MSG = [99, 99, 99]
+# `OK_BIT` and `ERROR_BIT` are the preceding bit of each reading.
+# They indicate a sensor error, not a serial comms error.
+OK_BIT = 10
+ERROR_BIT = 20
 MSG_START_BITS = [100, 150]
 MSG_END_BITS = [200]
 
@@ -66,9 +71,17 @@ class CalPtOrp:
     V: float
     ORP: float
 
+
 @dataclass
 class CalPtT:
     V: float
+    T: float  # Temp in C
+
+
+@dataclass
+class CalPtEc:
+    reading: float
+    ec: float
     T: float  # Temp in C
 
 
@@ -385,10 +398,13 @@ class EcSensor:
     """An interface for our EC module, which communicates a serial message over UART."""
     ser: serial.Serial
     K: CellConstant
+    cal: Optional[CalPtEc]
     excitation_mode: ExcMode
 
-    def __init__(self, K: float=1.0, exc_mode = ExcMode.READING_ONLY):
+
+    def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode = ExcMode.READING_ONLY):
         self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
+        # self.ser = serial.Serial('/dev/ttyAMA0', 115200, timeout=10)
 
         if K == 0.01:
             self.K = CellConstant.K0_01
@@ -403,18 +419,24 @@ class EcSensor:
 
         self.set_K(self.K)
 
+        self.cal = cal
+
         self.excitation_mode = exc_mode
         self.set_excitation_mode(self.excitation_mode)
 
     def read(self) -> float:
         """Take an ec reading"""
+        T = self.read_temp()
+        T = self.read_temp()
+
         for _ in range(SERIAL_TIMEOUT):
             self.ser.write(MSG_START_BITS + 10 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
             response = self.ser.read(READINGS_SIZE_EC)
             if response:
                 ec = response * self.K.value()  # µS/cm
                 # todo: Calibration, temp compensation, and units
-                return ec
+
+                return ec_from_voltage(ec, T)
 
     def read_temp(self) -> float:
         """Take an reading from the onboard air temperature sensor"""
@@ -450,7 +472,6 @@ class EcSensor:
         raise AttributeError("Problem getting data.")
 
 
-
 @dataclass
 class WaterMonitor:
     """We use this to pull readings from the Water Monitor over a USB COM serial connection.
@@ -458,9 +479,12 @@ class WaterMonitor:
     ser: serial.Serial
 
     def __init__(self):
-        # todo: Find the right comm port. #todo: Windows vis Linux
-        # self.ser = serial.Serial('/dev/ttyUSB0')
-        self.ser = serial.Serial('COM7', 19200, timeout=10)
+        for port in list_ports.comports():
+            # We set this serial number in the Water Monitor firmware.
+            if port.serial_number == "WM":
+                self.ser = serial.Serial(port.device, 9_600, timeout=10)
+                return
+        raise RuntimeError("Unable to find the Water Monitor. Is it connected over USB?")
 
     def read_all(self) -> Readings:
         """Read all sensors."""
@@ -472,8 +496,9 @@ class WaterMonitor:
 
         raise AttributeError("Problem getting data.")
 
-    # Todo: These should be special data requests, not just pulling part of read_all.
-    # todo. The current solution works for now.
+    # Alternatively, we could have special data requests for each reading, and only
+    # send what's required, but this approach works, and doesn't have many practical
+    # downsides.
     def read_ph(self) -> float:
         return self.read_all().pH
 
@@ -485,6 +510,10 @@ class WaterMonitor:
 
     def read_ec(self) -> float:
         return self.read_all().ec
+
+    def close(self) -> None:
+        """Close the serial port, leaving it available for other applications."""
+        self.ser.close()
 
 
 def lg(
@@ -538,6 +567,17 @@ def orp_from_voltage(V: float, cal: CalPtOrp) -> float:
     a = cal.ORP / cal.V
     b = cal.ORP - a * cal.V
     return a * V + b
+
+def ec_from_voltage(reading: float, cal: Optional[CalPtEc]) -> float:
+    """Convert sensor voltage to ORP voltage
+    We model the relationship between sensor voltage and pH linearly
+    between the calibration point, and (0., 0.). Output is in mV."""
+    if cal:
+        a = cal.ec / cal.reading
+        b = cal.ec - a * cal.reading
+        return a * reading + b
+    else:
+        return reading
 
 
 def temp_from_voltage(V: float) -> float:
