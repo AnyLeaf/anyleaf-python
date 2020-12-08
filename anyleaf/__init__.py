@@ -37,8 +37,6 @@ ERROR_BIT = 20
 MSG_START_BITS = [100, 150]
 MSG_END_BITS = [200]
 
-SERIAL_TIMEOUT = 100_000  # loops
-
 
 class CalSlot(Enum):
     """Keeps our calibration organized, so we track when to overwrite."""
@@ -427,47 +425,46 @@ class EcSensor:
     def read(self) -> float:
         """Take an ec reading"""
         T = self.read_temp()
-        T = self.read_temp()
 
-        for _ in range(SERIAL_TIMEOUT):
-            self.ser.write(MSG_START_BITS + 10 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-            response = self.ser.read(READINGS_SIZE_EC)
-            if response:
-                ec = response * self.K.value()  # µS/cm
-                # todo: Calibration, temp compensation, and units
+        # for _ in range(SERIAL_TIMEOUT):
+        self.ser.write(MSG_START_BITS + 10 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        response = self.ser.read(READINGS_SIZE_EC)
+        if response:
+            ec = response * self.K.value()  # µS/cm
+            # todo: Calibration, temp compensation, and units
 
-                return ec_from_voltage(ec, T)
+            return ec_from_voltage(ec, T)
 
     def read_temp(self) -> float:
         """Take an reading from the onboard air temperature sensor"""
         # todo DRY
-        for _ in range(SERIAL_TIMEOUT):
-            self.ser.write(MSG_START_BITS + 11 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-            response = self.ser.read(READINGS_SIZE_EC)
-            if response:
-                return Readings.from_bytes(response)
+        # for _ in range(SERIAL_TIMEOUT):
+        self.ser.write(MSG_START_BITS + 11 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        response = self.ser.read(READINGS_SIZE_EC)
+        if response:
+            return Readings.from_bytes(response)
 
     def set_excitation_mode(self, mode: ExcMode) -> float:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
-        for _ in range(SERIAL_TIMEOUT):
-            self.ser.write(MSG_START_BITS + 12 + int(mode) + [0, 0, 0, 0, 0] + MSG_END_BITS)
-            response = self.ser.read(READINGS_SIZE_EC)
-            if response:
-               return # todo errors etc
+        # for _ in range(SERIAL_TIMEOUT):
+        self.ser.write(MSG_START_BITS + 12 + int(mode) + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        response = self.ser.read(READINGS_SIZE_EC)
+        if response:
+           return # todo errors etc
 
-        raise AttributeError("Problem getting data.")
+    raise AttributeError("Problem getting data.")
 
     def set_K(self, K: CellConstant) -> float:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
-        for _ in range(SERIAL_TIMEOUT):
-            self.ser.write(MSG_START_BITS + 13 + int(K) + [0, 0, 0, 0, 0] + MSG_END_BITS)
-            response = self.ser.read(READINGS_SIZE_EC)
-            if response:
-                return # todo errors etc
+        # for _ in range(SERIAL_TIMEOUT):
+        self.ser.write(MSG_START_BITS + 13 + int(K) + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        response = self.ser.read(READINGS_SIZE_EC)
+        if response:
+            return # todo errors etc
 
         raise AttributeError("Problem getting data.")
 
@@ -488,11 +485,10 @@ class WaterMonitor:
 
     def read_all(self) -> Readings:
         """Read all sensors."""
-        for _ in range(SERIAL_TIMEOUT):
-            self.ser.write(MSG_START_BITS + MSG_END_BITS)
-            response = self.ser.read(READINGS_SIZE_WM)
-            if response:
-                return Readings.from_bytes(response)
+        self.ser.write(MSG_START_BITS + MSG_END_BITS)  # todo: Don't hard code it like this.
+        response = self.ser.read(READINGS_SIZE_WM)
+        if response:
+            return Readings.from_bytes(response)
 
         raise AttributeError("Problem getting data.")
 
