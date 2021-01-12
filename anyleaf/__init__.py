@@ -373,7 +373,7 @@ class CellConstant(Enum):
     K1_0 = 2
     K10 = 3
 
-    def value(self) -> float:
+    def const_value(self) -> float: # Don't overreade Enum's `value` property.
         """Return the conductivity value"""
         if self == CellConstant.K0_01:
             return 0.01
@@ -399,9 +399,10 @@ class EcSensor:
     cal: Optional[CalPtEc]
     excitation_mode: ExcMode
 
-
-    def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode = ExcMode.READING_ONLY):
-        self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
+    def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode=ExcMode.READING_ONLY):
+        self.ser = serial.Serial('/dev/serial0', 19200, timeout=10)
+        # self.ser = serial.Serial('/dev/ttyS0', 19200, timeout=10)
+        # self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
         # self.ser = serial.Serial('/dev/ttyAMA0', 115200, timeout=10)
 
         if K == 0.01:
@@ -427,10 +428,10 @@ class EcSensor:
         T = self.read_temp()
 
         # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + 10 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-            ec = response * self.K.value()  # µS/cm
+            ec = float(response) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
             return ec_from_voltage(ec, T)
@@ -439,32 +440,31 @@ class EcSensor:
         """Take an reading from the onboard air temperature sensor"""
         # todo DRY
         # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + 11 + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-            return Readings.from_bytes(response)
+            return float(response)  # todo: Is this right?
 
-    def set_excitation_mode(self, mode: ExcMode) -> float:
+    def set_excitation_mode(self, mode: ExcMode):
+        """Set probe conductivity constant"""
+        # todo: Dry message sending
+        self.excitation_mode = mode
+        # for _ in range(SERIAL_TIMEOUT):
+        self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        response = self.ser.read(READINGS_SIZE_EC)
+        if response:
+           return  # todo errors etc
+        raise AttributeError("Problem getting data.")
+
+    def set_K(self, K: CellConstant):
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
         # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + 12 + int(mode) + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-           return # todo errors etc
-
-    raise AttributeError("Problem getting data.")
-
-    def set_K(self, K: CellConstant) -> float:
-        """Set probe conductivity constant"""
-        # todo: Dry message sending
-        self.K = K
-        # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + 13 + int(K) + [0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(READINGS_SIZE_EC)
-        if response:
-            return # todo errors etc
+            return  # todo errors etc
 
         raise AttributeError("Problem getting data.")
 
@@ -563,6 +563,7 @@ def orp_from_voltage(V: float, cal: CalPtOrp) -> float:
     a = cal.ORP / cal.V
     b = cal.ORP - a * cal.V
     return a * V + b
+
 
 def ec_from_voltage(reading: float, cal: Optional[CalPtEc]) -> float:
     """Convert sensor voltage to ORP voltage
