@@ -399,11 +399,11 @@ class EcSensor:
     cal: Optional[CalPtEc]
     excitation_mode: ExcMode
 
-    def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode=ExcMode.READING_ONLY):
-        self.ser = serial.Serial('/dev/serial0', 19200, timeout=10)
+    def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode=ExcMode.READING_ONLY,
+                 uart_location='/dev/serial0', baud=19200):
+        self.ser = serial.Serial(uart_location, baud, timeout=10)
         # self.ser = serial.Serial('/dev/ttyS0', 19200, timeout=10)
         # self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
-        # self.ser = serial.Serial('/dev/ttyAMA0', 115200, timeout=10)
 
         if K == 0.01:
             self.K = CellConstant.K0_01
@@ -427,7 +427,8 @@ class EcSensor:
         """Take an ec reading"""
         T = self.read_temp()
 
-        # for _ in range(SERIAL_TIMEOUT):
+        # Bits 0:1 are start bits. Bit 2 identifies the command. Bits 3-9
+        # can pass additional data to the command. Bit 10 is the end bit.
         self.ser.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
@@ -439,7 +440,6 @@ class EcSensor:
     def read_temp(self) -> float:
         """Take an reading from the onboard air temperature sensor"""
         # todo DRY
-        # for _ in range(SERIAL_TIMEOUT):
         self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
@@ -449,8 +449,7 @@ class EcSensor:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.excitation_mode = mode
-        # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
            return  # todo errors etc
@@ -460,8 +459,7 @@ class EcSensor:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
-        # for _ in range(SERIAL_TIMEOUT):
-        self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
             return  # todo errors etc
