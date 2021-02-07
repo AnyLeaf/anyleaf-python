@@ -432,10 +432,16 @@ class EcSensor:
         self.ser.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
+            if response == ERROR_MSG:
+                print("Error reading temperature")
+                return
+
             ec = float(response) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
             return ec_from_voltage(ec, T)
+
+        raise AttributeError("Problem getting data.")
 
     def read_temp(self) -> float:
         """Take an reading from the onboard air temperature sensor"""
@@ -443,7 +449,12 @@ class EcSensor:
         self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
+            if response == ERROR_MSG:
+                print("Error reading temperature")
+                return
             return float(response)  # todo: Is this right?
+
+        raise AttributeError("Problem getting data.")
 
     def set_excitation_mode(self, mode: ExcMode):
         """Set probe conductivity constant"""
@@ -452,7 +463,10 @@ class EcSensor:
         self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-           return  # todo errors etc
+            if response == ERROR_MSG or resopnse != SUCCESS_MSG:
+                print("Error setting exciation mode")
+                return
+
         raise AttributeError("Problem getting data.")
 
     def set_K(self, K: CellConstant):
@@ -462,7 +476,9 @@ class EcSensor:
         self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-            return  # todo errors etc
+            if response == ERROR_MSG or response != SUCCESS_MSG:
+                print("Error setting cell constant.")
+                return
 
         raise AttributeError("Problem getting data.")
 
