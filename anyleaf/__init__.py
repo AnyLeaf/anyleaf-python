@@ -30,7 +30,7 @@ READINGS_SIZE_WM = 20
 READINGS_SIZE_EC = 11
 SUCCESS_MSG = [50, 50, 50]
 ERROR_MSG = [99, 99, 99]
-# `OK_BIT` and `ERROR_BIT` are the preceding bit of each reading.
+# `OK_BIT` and `ERROR_BIT` are the preceding bit of each reading. from the water monitor.
 # They indicate a sensor error, not a serial comms error.
 OK_BIT = 10
 ERROR_BIT = 20
@@ -78,8 +78,8 @@ class CalPtT:
 
 @dataclass
 class CalPtEc:
-    reading: float
-    ec: float
+    reading: float  # Raw conductivity in uS/cm
+    ec: float  # calibrated conductivity
     T: float  # Temp in C
 
 
@@ -336,36 +336,6 @@ class Rtd:
         pass
 
 
-@dataclass
-class Readings:
-    # todo: Should these (And the readings in general) be Optional[float] to deal
-    # todo with hardware errors?
-    pH: Optional[float]
-    T: Optional[float]
-    ec: Optional[float]
-    ORP: Optional[float]
-
-    @classmethod
-    def from_bytes(cls, buf: bytes) -> 'Readings':
-        """Read a 20-byte set. Each reading is 5 bytes: 1 for ok/error, the other
-        4 for a float."""
-        result = cls(None, None, None, None)
-
-        if buf[0] == OK_BIT:
-            result.T = struct.unpack('f', buf[1:5])
-
-        if buf[5] == OK_BIT:
-            result.pH = struct.unpack('f', buf[6:10])
-
-        if buf[10] == OK_BIT:
-            result.ORP = struct.unpack('f', buf[11:15])
-
-        if buf[15] == OK_BIT:
-            result.ec = struct.unpack('f', buf[16:20])
-
-        return result
-
-
 class CellConstant(Enum):
     """Cell constant, in 1/cm. Aka, K. Numerical value is the serialized bit value."""
     K0_01 = 0
@@ -424,7 +394,7 @@ class EcSensor:
         self.set_excitation_mode(self.excitation_mode)
 
     def read(self) -> float:
-        """Take an ec reading"""
+        """Take a conductivity reading. The result is in uS/cm."""
         T = self.read_temp()
 
         # Bits 0:1 are start bits. Bit 2 identifies the command. Bits 3-9
@@ -433,18 +403,18 @@ class EcSensor:
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
             if response == ERROR_MSG:
-                print("Error reading temperature")
+                print("Error reading conductivity")
                 return
 
             ec = float(response) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
-            return ec_from_voltage(ec, T)
+            return ec_from_reading(ec, T)
 
-        raise AttributeError("Problem getting data.")
+        raise AttributeError("Problem getting data")
 
     def read_temp(self) -> float:
-        """Take an reading from the onboard air temperature sensor"""
+        """Take a reading from the onboard air temperature sensor."""
         # todo DRY
         self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
@@ -452,22 +422,24 @@ class EcSensor:
             if response == ERROR_MSG:
                 print("Error reading temperature")
                 return
-            return float(response)  # todo: Is this right?
 
-        raise AttributeError("Problem getting data.")
+            val = # todo: Convert 2 bytes to u16.
+            return temp_from_voltage(voltage_from_adc(val))
+
+        raise AttributeError("Problem getting data")
 
     def set_excitation_mode(self, mode: ExcMode):
-        """Set probe conductivity constant"""
+        """Set whether the excitation current is always on, or only only during readings."""
         # todo: Dry message sending
         self.excitation_mode = mode
         self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
-            if response == ERROR_MSG or resopnse != SUCCESS_MSG:
-                print("Error setting exciation mode")
+            if response == ERROR_MSG or response != SUCCESS_MSG:
+                print("Error setting excitation mode")
                 return
 
-        raise AttributeError("Problem getting data.")
+        raise AttributeError("Problem getting data")
 
     def set_K(self, K: CellConstant):
         """Set probe conductivity constant"""
@@ -477,10 +449,40 @@ class EcSensor:
         response = self.ser.read(READINGS_SIZE_EC)
         if response:
             if response == ERROR_MSG or response != SUCCESS_MSG:
-                print("Error setting cell constant.")
+                print("Error setting cell constant")
                 return
 
-        raise AttributeError("Problem getting data.")
+        raise AttributeError("Problem getting data")
+
+
+@dataclass
+class Readings:
+    # todo: Should these (And the readings in general) be Optional[float] to deal
+    # todo with hardware errors?
+    pH: Optional[float]
+    T: Optional[float]
+    ec: Optional[float]
+    ORP: Optional[float]
+
+    @classmethod
+    def from_bytes(cls, buf: bytes) -> 'Readings':
+        """Read a 20-byte set. Each reading is 5 bytes: 1 for ok/error, the other
+        4 for a float."""
+        result = cls(None, None, None, None)
+
+        if buf[0] == OK_BIT:
+            result.T = struct.unpack('f', buf[1:5])
+
+        if buf[5] == OK_BIT:
+            result.pH = struct.unpack('f', buf[6:10])
+
+        if buf[10] == OK_BIT:
+            result.ORP = struct.unpack('f', buf[11:15])
+
+        if buf[15] == OK_BIT:
+            result.ec = struct.unpack('f', buf[16:20])
+
+        return result
 
 
 @dataclass
@@ -579,7 +581,7 @@ def orp_from_voltage(V: float, cal: CalPtOrp) -> float:
     return a * V + b
 
 
-def ec_from_voltage(reading: float, cal: Optional[CalPtEc]) -> float:
+def ec_from_reading(reading: float, cal: Optional[CalPtEc]) -> float:
     """Convert sensor voltage to ORP voltage
     We model the relationship between sensor voltage and pH linearly
     between the calibration point, and (0., 0.). Output is in mV."""
@@ -589,6 +591,11 @@ def ec_from_voltage(reading: float, cal: Optional[CalPtEc]) -> float:
         return a * reading + b
     else:
         return reading
+
+
+def voltage_from_adc(digi: int) -> float:
+    vref = 2.048
+    return (float(digi) / 32_768.) * vref
 
 
 def temp_from_voltage(V: float) -> float:

@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="anyleaf",
-    version="0.1.8.1",
+    version="0.1.9",
     author="Anyleaf",
     author_email="anyleaf@anyleaf.org",
     description="Driver for the Anyleaf pH sensor",
