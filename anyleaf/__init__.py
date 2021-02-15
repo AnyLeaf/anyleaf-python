@@ -423,8 +423,7 @@ class EcSensor:
                 print("Error reading temperature")
                 return
 
-            val = # todo: Convert 2 bytes to u16.
-            return temp_from_voltage(voltage_from_adc(val))
+            return temp_from_voltage(voltage_from_adc(int.from_bytes(response, byteorder='big')))
 
         raise AttributeError("Problem getting data")
 
