@@ -85,6 +85,8 @@ class CalPtEc:
 
 @dataclass
 class PhSensor:
+    """Represents a pH sensor, or more broadly, any ion-selective glass electrode sensor.
+    The default calibration is only appropriate for pH."""
     adc: ADS
     filter: KalmanFilter
     dt: float
