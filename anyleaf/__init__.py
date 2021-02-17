@@ -95,7 +95,7 @@ class PhSensor:
     cal_2: CalPt
     cal_3: Optional[CalPt]
 
-    def __init__(self, i2c, dt: float, address=0x48):
+    def __init__(self, i2c, dt: float, address: int=0x48):
         # `dt` is in seconds.
         adc = ADS.ADS1115(i2c, address=address)
         adc.gain = 2  # Set the ADC's voltage range to be +-2.048V.
@@ -106,6 +106,12 @@ class PhSensor:
         self.last_meas: 7.0
         self.cal_1 = CalPt(0., 7.0, 23.)
         self.cal_2 = CalPt(0.17, 4.0, 23.)
+        self.cal_3 = None
+
+    def cal_nitrate_default(self) -> None:
+        """Set calibration to a sensible default for nitrates, with unit mg/L"""
+        self.cal_1 = CalPt(0.25, -2. * 62_000., 23.)
+        self.cal_2 = CalPt(0.4, -5 * 62_000., 23.)
         self.cal_3 = None
 
     def predict(self) -> None:
@@ -209,7 +215,7 @@ class OrpSensor:
     last_meas: float  # To let discrete jumps bypass the filter.
     cal: CalPtOrp
 
-    def __init__(self, i2c, dt: float, address=0x48):
+    def __init__(self, i2c, dt: float, address: int=0x48):
         # `dt` is in seconds.
         adc = ADS.ADS1115(i2c, address=address)
         adc.gain = 2  # Set the ADC's voltage range to be +-2.048V.
