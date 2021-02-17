@@ -109,7 +109,19 @@ class PhSensor:
         self.cal_3 = None
 
     def cal_nitrate_default(self) -> None:
-        """Set calibration to a sensible default for nitrates, with unit mg/L"""
+        """Set calibration to a sensible default for nitrate, with unit mg/L"""
+        self.cal_1 = CalPt(0.25, -2. * 62_000., 23.)
+        self.cal_2 = CalPt(0.4, -5 * 62_000., 23.)
+        self.cal_3 = None
+
+    def cal_phosphate_default(self) -> None:
+        """Set calibration to a sensible default for phosphate, with unit mg/L"""
+        self.cal_1 = CalPt(0.25, -2. * 62_000., 23.)
+        self.cal_2 = CalPt(0.4, -5 * 62_000., 23.)
+        self.cal_3 = None
+
+    def cal_postassium_default(self) -> None:
+        """Set calibration to a sensible default for potassium, with unit mg/L"""
         self.cal_1 = CalPt(0.25, -2. * 62_000., 23.)
         self.cal_2 = CalPt(0.4, -5 * 62_000., 23.)
         self.cal_3 = None
