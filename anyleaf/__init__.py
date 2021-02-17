@@ -26,8 +26,8 @@ PH_TEMP_C = -0.05694  # pH/(V*T). V is in volts, and T is in °C
 # These 3 bits are used for requesting data from the water monitor via USB
 # serial. They must match the codes in the Water Monitor firmware.
 # READINGS_REQ_BIT = 69
-READINGS_SIZE_WM = 20
-READINGS_SIZE_EC = 11
+MSG_SIZE_WM = 20
+MSG_SIZE_EC = 11
 SUCCESS_MSG = [50, 50, 50]
 ERROR_MSG = [99, 99, 99]
 # `OK_BIT` and `ERROR_BIT` are the preceding bit of each reading. from the water monitor.
@@ -374,6 +374,7 @@ class CellConstant(Enum):
         else:
             return 10.
 
+
 class ExcMode(Enum):
     """Excitation mode: Always on, or only when measuring. Numerical value is
     the serialized bit value. This mirrors the rust equivalent"""
@@ -420,13 +421,13 @@ class EcSensor:
         # Bits 0:1 are start bits. Bit 2 identifies the command. Bits 3-9
         # can pass additional data to the command. Bit 10 is the end bit.
         self.ser.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(READINGS_SIZE_EC)
+        response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG:
                 print("Error reading conductivity")
                 return
 
-            ec = float(response) * self.K.const_value()  # µS/cm
+            ec = float(int.from_bytes(response, byte_order="big")) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
             return ec_from_reading(ec, T)
@@ -437,13 +438,13 @@ class EcSensor:
         """Take a reading from the onboard air temperature sensor."""
         # todo DRY
         self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(READINGS_SIZE_EC)
+        response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG:
                 print("Error reading temperature")
                 return
 
-            return temp_from_voltage(voltage_from_adc(int.from_bytes(response, byteorder='big')))
+            return temp_from_voltage(voltage_from_adc(int.from_bytes(response, byteorder="big")))
 
         raise AttributeError("Problem getting data")
 
@@ -452,7 +453,7 @@ class EcSensor:
         # todo: Dry message sending
         self.excitation_mode = mode
         self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(READINGS_SIZE_EC)
+        response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG or response != SUCCESS_MSG:
                 print("Error setting excitation mode")
@@ -465,7 +466,7 @@ class EcSensor:
         # todo: Dry message sending
         self.K = K
         self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(READINGS_SIZE_EC)
+        response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG or response != SUCCESS_MSG:
                 print("Error setting cell constant")
@@ -521,7 +522,7 @@ class WaterMonitor:
     def read_all(self) -> Readings:
         """Read all sensors."""
         self.ser.write(MSG_START_BITS + MSG_END_BITS)  # todo: Don't hard code it like this.
-        response = self.ser.read(READINGS_SIZE_WM)
+        response = self.ser.read(MSG_SIZE_WM)
         if response:
             return Readings.from_bytes(response)
 
