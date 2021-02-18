@@ -391,10 +391,11 @@ class EcSensor:
     excitation_mode: ExcMode
 
     def __init__(self, K: float=1.0, cal: Optional[CalPtEc]=None, exc_mode=ExcMode.READING_ONLY,
-                 uart_location='/dev/serial0', baud=19200):
-        self.ser = serial.Serial(uart_location, baud, timeout=10)
-        # self.ser = serial.Serial('/dev/ttyS0', 19200, timeout=10)
-        # self.ser = serial.Serial('/dev/ttyAMA0', 19200, timeout=10)
+                 uart_location='/dev/serial0'):
+        # Same baud as set in firmware: 9,600.
+        self.ser = serial.Serial(uart_location, 9_600, timeout=10)
+        # self.ser = serial.Serial('/dev/ttyS0', 9_600, timeout=10)
+        # self.ser = serial.Serial('/dev/ttyAMA0', 9_600, timeout=10)
 
         if K == 0.01:
             self.K = CellConstant.K0_01
@@ -420,14 +421,14 @@ class EcSensor:
 
         # Bits 0:1 are start bits. Bit 2 identifies the command. Bits 3-9
         # can pass additional data to the command. Bit 10 is the end bit.
-        self.ser.write(MSG_START_BITS + [10] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [10, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG:
                 print("Error reading conductivity")
                 return
 
-            ec = float(int.from_bytes(response, byte_order="big")) * self.K.const_value()  # µS/cm
+            ec = float(int.from_bytes(response, byteorder="big")) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
             return ec_from_reading(ec, T)
@@ -437,7 +438,7 @@ class EcSensor:
     def read_temp(self) -> float:
         """Take a reading from the onboard air temperature sensor."""
         # todo DRY
-        self.ser.write(MSG_START_BITS + [11] + [0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [11, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG:
@@ -452,7 +453,7 @@ class EcSensor:
         """Set whether the excitation current is always on, or only only during readings."""
         # todo: Dry message sending
         self.excitation_mode = mode
-        self.ser.write(MSG_START_BITS + [12] + [mode.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [12, mode.value, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG or response != SUCCESS_MSG:
@@ -465,7 +466,7 @@ class EcSensor:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
-        self.ser.write(MSG_START_BITS + [13] + [K.value] + [0, 0, 0, 0, 0, 0] + MSG_END_BITS)
+        self.ser.write(MSG_START_BITS + [13, K.value, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
         response = self.ser.read(MSG_SIZE_EC)
         if response:
             if response == ERROR_MSG or response != SUCCESS_MSG:
@@ -622,4 +623,4 @@ def temp_from_voltage(V: float) -> float:
     """Map voltage to temperature for the TI LM61, in °C
     Datasheet: https://datasheet.lcsc.com/szlcsc/Texas-Instruments-
     TI-LM61BIM3-NOPB_C132073.pdf"""
-    return 100.0 * V - 60.0
+    return 100. * V - 60.
