@@ -28,14 +28,15 @@ PH_TEMP_C = -0.05694  # pH/(V*T). V is in volts, and T is in °C
 # READINGS_REQ_BIT = 69
 MSG_SIZE_WM = 20
 MSG_SIZE_EC = 11
+RESPONSE_SIZE_EC = 3
 SUCCESS_MSG = [50, 50, 50]
 ERROR_MSG = [99, 99, 99]
 # `OK_BIT` and `ERROR_BIT` are the preceding bit of each reading. from the water monitor.
 # They indicate a sensor error, not a serial comms error.
 OK_BIT = 10
 ERROR_BIT = 20
-MSG_START_BITS = [100, 150]
-MSG_END_BITS = [200]
+MSG_START_BYTES = [100, 150]
+MSG_END_BYTES = [200]
 
 
 class CalSlot(Enum):
@@ -378,7 +379,7 @@ class CellConstant(Enum):
 class ExcMode(Enum):
     """Excitation mode: Always on, or only when measuring. Numerical value is
     the serialized bit value. This mirrors the rust equivalent"""
-    READING_ONLY = 0,
+    READING_ONLY = 0
     ALWAYS_ON = 1
 
 
@@ -421,14 +422,14 @@ class EcSensor:
 
         # Bits 0:1 are start bits. Bit 2 identifies the command. Bits 3-9
         # can pass additional data to the command. Bit 10 is the end bit.
-        self.ser.write(MSG_START_BITS + [10, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(MSG_SIZE_EC)
-        if response:
-            if response == ERROR_MSG:
-                print("Error reading conductivity")
-                return
+        self.ser.write(MSG_START_BYTES + [10, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BYTES)
 
-            ec = float(int.from_bytes(response, byteorder="big")) * self.K.const_value()  # µS/cm
+        response = list(self.ser.read(RESPONSE_SIZE_EC))
+        if response:
+            if response == ERROR_MSG or response[0] != OK_BIT:
+                raise AttributeError("Error reading conductivity")
+
+            ec = float(int.from_bytes(response[1:], byteorder="big")) * self.K.const_value()  # µS/cm
             # todo: Calibration, temp compensation, and units
 
             return ec_from_reading(ec, T)
@@ -438,14 +439,14 @@ class EcSensor:
     def read_temp(self) -> float:
         """Take a reading from the onboard air temperature sensor."""
         # todo DRY
-        self.ser.write(MSG_START_BITS + [11, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(MSG_SIZE_EC)
-        if response:
-            if response == ERROR_MSG:
-                print("Error reading temperature")
-                return
+        self.ser.write(MSG_START_BYTES + [11, 0, 0, 0, 0, 0, 0, 0] + MSG_END_BYTES)
 
-            return temp_from_voltage(voltage_from_adc(int.from_bytes(response, byteorder="big")))
+        response = list(self.ser.read(RESPONSE_SIZE_EC))
+        if response:
+            if response == ERROR_MSG or response[0] != OK_BIT:
+                raise AttributeError("Error reading temperature")
+
+            return temp_from_voltage(voltage_from_adc(int.from_bytes(response[1:], byteorder="big")))
 
         raise AttributeError("Problem getting data")
 
@@ -453,12 +454,13 @@ class EcSensor:
         """Set whether the excitation current is always on, or only only during readings."""
         # todo: Dry message sending
         self.excitation_mode = mode
-        self.ser.write(MSG_START_BITS + [12, mode.value, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(MSG_SIZE_EC)
+        self.ser.write(MSG_START_BYTES + [12, mode.value, 0, 0, 0, 0, 0, 0] + MSG_END_BYTES)
+
+        response = list(self.ser.read(RESPONSE_SIZE_EC))
         if response:
-            if response == ERROR_MSG or response != SUCCESS_MSG:
-                print("Error setting excitation mode")
-                return
+            if response != SUCCESS_MSG:
+                raise AttributeError("Error setting excitation mode")
+            return
 
         raise AttributeError("Problem getting data")
 
@@ -466,12 +468,13 @@ class EcSensor:
         """Set probe conductivity constant"""
         # todo: Dry message sending
         self.K = K
-        self.ser.write(MSG_START_BITS + [13, K.value, 0, 0, 0, 0, 0, 0] + MSG_END_BITS)
-        response = self.ser.read(MSG_SIZE_EC)
+        self.ser.write(MSG_START_BYTES + [13, K.value, 0, 0, 0, 0, 0, 0] + MSG_END_BYTES)
+
+        response = list(self.ser.read(RESPONSE_SIZE_EC))
         if response:
-            if response == ERROR_MSG or response != SUCCESS_MSG:
-                print("Error setting cell constant")
-                return
+            if response != SUCCESS_MSG:
+                raise AttributeError("Error setting cell constant")
+            return
 
         raise AttributeError("Problem getting data")
 
@@ -522,7 +525,7 @@ class WaterMonitor:
 
     def read_all(self) -> Readings:
         """Read all sensors."""
-        self.ser.write(MSG_START_BITS + MSG_END_BITS)  # todo: Don't hard code it like this.
+        self.ser.write(MSG_START_BYTES + MSG_END_BYTES)  # todo: Don't hard code it like this.
         response = self.ser.read(MSG_SIZE_WM)
         if response:
             return Readings.from_bytes(response)
@@ -602,16 +605,18 @@ def orp_from_voltage(V: float, cal: CalPtOrp) -> float:
     return a * V + b
 
 
-def ec_from_reading(reading: float, cal: Optional[CalPtEc]) -> float:
-    """Convert sensor voltage to ORP voltage
-    We model the relationship between sensor voltage and pH linearly
-    between the calibration point, and (0., 0.). Output is in mV."""
-    if cal:
-        a = cal.ec / cal.reading
-        b = cal.ec - a * cal.reading
-        return a * reading + b
-    else:
-        return reading
+# def ec_from_reading(reading: float, cal: Optional[CalPtEc]) -> float:
+def ec_from_reading(reading: float, T: float) -> float:
+    """Temperature-compensate an ec reading."""
+    # todo
+    return reading
+
+    # if cal:
+    #     a = cal.ec / cal.reading
+    #     b = cal.ec - a * cal.reading
+    #     return a * reading + b
+    # else:
+    #     return reading
 
 
 def voltage_from_adc(digi: int) -> float:

@@ -2,8 +2,19 @@ import time
 
 import board
 import busio
+import csv
 from anyleaf import PhSensor, CalPt, CalSlot, OnBoard, OffBoard
 from anyleaf import OrpSensor, CalPtOrp
+
+
+CFG_FILENAME = "ph_cal_data.csv"
+
+
+def calibrate():
+    """Save calibration data to a file"""
+    with open(CFG_FILENAME, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(1, 2, 3)
 
 
 def main():
@@ -21,6 +32,14 @@ def main():
     # You can find voltage and temperature with `ph_sensor.read_voltage()` and
     # `ph_sensor.read_temp()` respectively. Or skip this to use default calibration.
     # For 3 pt calibration, pass a third argument to `calibrate_all`.
+
+    with open(CFG_FILENAME, newline='') as f:
+        reader = csv.reader(f)
+        pt1 = CalPt(reader[0][0]], reader[0][1]], reader[0][2]])
+        pt2 = CalPt(reader[0][0]], reader[0][1]], reader[0][2]])
+
+        ph_sensor.calibrate_all(pt1, pt2))
+
     ph_sensor.calibrate_all(
         CalPt(0., 7., 25.), CalPt(0.18, 4., 25.)
     )
