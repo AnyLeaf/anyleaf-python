@@ -104,7 +104,7 @@ class PhSensor:
         self.adc = adc
         self.filter = filter.create(dt)
         self.dt = dt  # Store for when we update the filter's Q.
-        self.last_meas: 7.0
+        self.last_meas = 7.0
         self.cal_1 = CalPt(0., 7.0, 23.)
         self.cal_2 = CalPt(0.17, 4.0, 23.)
         self.cal_3 = None
@@ -236,7 +236,7 @@ class OrpSensor:
         self.adc = adc
         self.filter = filter.create(dt)
         self.dt = dt  # Store for when we update the filter's Q.
-        self.last_meas: 0.0
+        self.last_meas = 0.0
         self.cal = CalPtOrp(0.4, 400.0)
 
     def predict(self) -> None:
