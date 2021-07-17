@@ -1,4 +1,4 @@
-# Driver for the Anyleaf pH module
+# Driver for the Anyleaf pH, ORP, RTC, and conductivity modules
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -395,8 +395,6 @@ class EcSensor:
                  uart_location='/dev/serial0'):
         # Same baud as set in firmware: 9,600.
         self.ser = serial.Serial(uart_location, 9_600, timeout=10)
-        # self.ser = serial.Serial('/dev/ttyS0', 9_600, timeout=10)
-        # self.ser = serial.Serial('/dev/ttyAMA0', 9_600, timeout=10)
 
         if K == 0.01:
             self.K = CellConstant.K0_01
@@ -481,8 +479,6 @@ class EcSensor:
 
 @dataclass
 class Readings:
-    # todo: Should these (And the readings in general) be Optional[float] to deal
-    # todo with hardware errors?
     pH: Optional[float]
     T: Optional[float]
     ec: Optional[float]

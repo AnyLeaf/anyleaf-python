@@ -1,3 +1,8 @@
+# This file demonstrates how to take measurements using the AnyLeaf pH/ORP
+# module in Python, on Raspberry Pi. It includes basic operations, and some example
+# code for storing calibration data in a CSV.
+
+
 import time
 
 import board
