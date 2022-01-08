@@ -38,6 +38,8 @@ ERROR_BIT = 20
 MSG_START_BYTES = [100, 150]
 MSG_END_BYTES = [200]
 
+# Todo: Use a lowpass / moving avg instead of kalman!!
+
 
 class CalSlot(Enum):
     """Keeps our calibration organized, so we track when to overwrite."""
@@ -58,7 +60,7 @@ class OffBoard:
     temp: float
 
 
-@dataclass
+@dataclassF
 class CalPt:
     V: float
     pH: float
@@ -490,17 +492,19 @@ class Readings:
         4 for a float."""
         result = cls(None, None, None, None)
 
+        format = '>f'  # > is for big-endian. "f" is for float.
+
         if buf[0] == OK_BIT:
-            result.T = struct.unpack('f', buf[1:5])
+            result.T = struct.unpack(format, buf[1:5])
 
         if buf[5] == OK_BIT:
-            result.pH = struct.unpack('f', buf[6:10])
+            result.pH = struct.unpack(format, buf[6:10])
 
         if buf[10] == OK_BIT:
-            result.ORP = struct.unpack('f', buf[11:15])
+            result.ORP = struct.unpack(format, buf[11:15])
 
         if buf[15] == OK_BIT:
-            result.ec = struct.unpack('f', buf[16:20])
+            result.ec = struct.unpack(format, buf[16:20])
 
         return result
 

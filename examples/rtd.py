@@ -7,9 +7,11 @@ from anyleaf import Rtd, RtdType, RtdWires
 
 def main():
     spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+
     # `cs` is the pin connected to the `CS` pin of the module. It can be any
-    # GPIO pin.
+    # GPIO pin. In this example, it's set to GPIO 5.
     cs = digitalio.DigitalInOut(board.D5)
+
     sensor = Rtd(spi, cs, RtdType.PT100, RtdWires.THREE)  # 3-wire pt100
     # sensor = Rtd(spi, cs, RtdType.PT1000, RtdWires.TWO)  # 2-wire pt1000
 
