@@ -16,7 +16,7 @@ import os
 CFG_FILENAME = "ph_cal_data.csv"
 CAL_1 = CalPt(0., 7., 25.),
 CAL_2 = CalPt(0.17, 4., 25.)
-# CalPt(-0.17, 10., 25.)  # For 3-pt calibration
+# CAL_3 = CalPt(-0.17, 10., 25.)  # For 3-pt calibration
 
 
 def save_calibration_data(point1: CalPt, point2: CalPt):
