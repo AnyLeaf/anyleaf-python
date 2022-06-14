@@ -12,7 +12,11 @@ from anyleaf import PhSensor, CalPt, CalSlot, OnBoard, OffBoard
 from anyleaf import OrpSensor, CalPtOrp
 import os
 
+# Change this file name (if storing calibration to CSV), and/or these in-file calibration-points as required:
 CFG_FILENAME = "ph_cal_data.csv"
+CAL_1 = CalPt(0., 7., 25.),
+CAL_2 = CalPt(0.17, 4., 25.)
+# CalPt(-0.17, 10., 25.)  # For 3-pt calibration
 
 
 def save_calibration_data(point1: CalPt, point2: CalPt):
@@ -47,7 +51,7 @@ def main():
     # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
 
     if not os.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
-        save_calibration_data(CalPt(0., 7., 25.), CalPt(0.18, 4., 25.))
+        save_calibration_data(CAL1, CAL2)
 
     with open(CFG_FILENAME, newline='') as f:
         reader = list(csv.reader(f))
@@ -59,9 +63,7 @@ def main():
     # `calibrate_all` stores 2 or 3 calibration values, from known previous values.
     # The first value is measured voltage; the second is nominal pH; the third is temperature
     # at which the calibration was performed.
-    ph_sensor.calibrate_all(
-        CalPt(0., 7., 25.), CalPt(0.18, 4., 25.)
-    )
+    ph_sensor.calibrate_all(CAL1, CAL2)
 
     # Or, call `calibrate` with the sensor in the appropriate buffer solution.
     # This will automatically use voltage and temperature.
