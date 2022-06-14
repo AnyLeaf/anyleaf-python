@@ -14,7 +14,8 @@ license = "MIT"
 [tool.pyflow.dependencies]
 adafruit-circuitpython-ads1x15="^2.2.8"
 adafruit-circuitpython-max31865="^2.2.9"
-filterpy="^1.4.5"
+#filterpy="^1.4.5"
+scipy="^1.8.0"
 pyserial="^3.4"
 
 

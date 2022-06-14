@@ -10,16 +10,18 @@ import busio
 import csv
 from anyleaf import PhSensor, CalPt, CalSlot, OnBoard, OffBoard
 from anyleaf import OrpSensor, CalPtOrp
-
+import os
 
 CFG_FILENAME = "ph_cal_data.csv"
 
 
-def calibrate():
-    """Save calibration data to a file"""
-    with open(CFG_FILENAME, 'w', newline='') as f:
+def save_calibration_data(point1: CalPt, point2: CalPt):
+    """Save 2-pt calibration data to a file. Creates the file if it doesn't already exist. You may modify this
+     by adding a third calibration point and row if desired, for 3-pt calibration."""
+    with open(CFG_FILENAME, 'w+', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(1, 2, 3)
+        writer.writerow(point1.V, point1.pH, point1.T)
+        writer.writerow(point2.V, point2.pH, point2.T)
 
 
 def main():
@@ -41,10 +43,16 @@ def main():
     # `ph_sensor.read_temp()` respectively. Or skip this to use default calibration.
     # For 3 pt calibration, pass a third argument to `calibrate_all`.
 
+    # Example loading 2-point calibration data from a file. Each row is a calibration point. The columns are
+    # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
+
+    if not os.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
+        save_calibration_data(CalPt(0., 7., 25.), CalPt(0.18, 4., 25.))
+
     with open(CFG_FILENAME, newline='') as f:
-        reader = csv.reader(f)
+        reader = list(csv.reader(f))
         pt1 = CalPt(reader[0][0], reader[0][1], reader[0][2])
-        pt2 = CalPt(reader[0][0], reader[0][1], reader[0][2])
+        pt2 = CalPt(reader[1][0], reader[1][1], reader[1][2])
 
         ph_sensor.calibrate_all(pt1, pt2)
 
@@ -62,6 +70,9 @@ def main():
 
     # V1, T1 = ph_sensor.calibrate(CalSlot.ONE, 7., OnBoard(())
     # V2, T2 = ph_sensor.calibrate(CalSlot.TWO, 4., OffBoard(23.)
+
+    # Optionally, save this calibration data to a file:
+    # save_calibration_data(CalPt(V1, 7., T1), CalPt(V2, 4., T2))
 
     # ORP setup is simpler: There's only 1 calibration point, and no
     # temperature compensation. Use these as equivalents to the above:
