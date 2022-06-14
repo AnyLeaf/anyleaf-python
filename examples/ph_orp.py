@@ -47,9 +47,14 @@ def main():
     # `ph_sensor.read_temp()` respectively. Or skip this to use default calibration.
     # For 3 pt calibration, pass a third argument to `calibrate_all`.
 
-    # Example loading 2-point calibration data from a file. Each row is a calibration point. The columns are
-    # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
+    # `calibrate_all` stores 2 or 3 calibration values, from known previous values.
+    # The first value is measured voltage; the second is nominal pH; the third is temperature
+    # at which the calibration was performed. This is how you apply calibration data. You can apply calibration
+    # data directly like this, by storing the cal data in the Python file your program uses.
+    ph_sensor.calibrate_all(CAL1, CAL2)
 
+    # Example below loading 2-point calibration data from a file. Each row is a calibration point. The columns are
+    # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
     if not os.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
         save_calibration_data(CAL1, CAL2)
 
@@ -59,11 +64,6 @@ def main():
         pt2 = CalPt(reader[1][0], reader[1][1], reader[1][2])
 
         ph_sensor.calibrate_all(pt1, pt2)
-
-    # `calibrate_all` stores 2 or 3 calibration values, from known previous values.
-    # The first value is measured voltage; the second is nominal pH; the third is temperature
-    # at which the calibration was performed.
-    ph_sensor.calibrate_all(CAL1, CAL2)
 
     # Or, call `calibrate` with the sensor in the appropriate buffer solution.
     # This will automatically use voltage and temperature.
