@@ -51,12 +51,12 @@ def main():
     # The first value is measured voltage; the second is nominal pH; the third is temperature
     # at which the calibration was performed. This is how you apply calibration data. You can apply calibration
     # data directly like this, by storing the cal data in the Python file your program uses.
-    ph_sensor.calibrate_all(CAL1, CAL2)
+    ph_sensor.calibrate_all(CAL_1, CAL_2)
 
     # Example below loading 2-point calibration data from a file. Each row is a calibration point. The columns are
     # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
     if not os.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
-        save_calibration_data(CAL1, CAL2)
+        save_calibration_data(CAL_1, CAL_2)
 
     with open(CFG_FILENAME, newline='') as f:
         reader = list(csv.reader(f))
