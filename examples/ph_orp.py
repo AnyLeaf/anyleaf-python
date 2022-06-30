@@ -2,19 +2,18 @@
 # module in Python, on Raspberry Pi. It includes basic operations, and some example
 # code for storing calibration data in a CSV.
 
-
+import csv
+import os
 import time
 
 import board
 import busio
-import csv
-from anyleaf import PhSensor, CalPt, CalSlot, OnBoard, OffBoard
-from anyleaf import OrpSensor, CalPtOrp
-import os
+
+from anyleaf import PhSensor, CalPt, CalSlot, OnBoard, OffBoard, OrpSensor, CalPtOrp
 
 # Change this file name (if storing calibration to CSV), and/or these in-file calibration-points as required:
 CFG_FILENAME = "ph_cal_data.csv"
-CAL_1 = CalPt(0., 7., 25.),
+CAL_1 = CalPt(0., 7., 25.)
 CAL_2 = CalPt(0.17, 4., 25.)
 # CAL_3 = CalPt(-0.17, 10., 25.)  # For 3-pt calibration
 
@@ -22,10 +21,10 @@ CAL_2 = CalPt(0.17, 4., 25.)
 def save_calibration_data(point1: CalPt, point2: CalPt):
     """Save 2-pt calibration data to a file. Creates the file if it doesn't already exist. You may modify this
      by adding a third calibration point and row if desired, for 3-pt calibration."""
-    with open(CFG_FILENAME, 'w+', newline='') as f:
+    with open(CFG_FILENAME, 'w+') as f:
         writer = csv.writer(f)
-        writer.writerow(point1.V, point1.pH, point1.T)
-        writer.writerow(point2.V, point2.pH, point2.T)
+        writer.writerow([point1.V, point1.pH, point1.T])
+        writer.writerow([point2.V, point2.pH, point2.T])
 
 
 def main():
@@ -55,15 +54,15 @@ def main():
 
     # Example below loading 2-point calibration data from a file. Each row is a calibration point. The columns are
     # (left to right) voltage measured, nominal pH, temperature the measurement was taken at.
-    if not os.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
+    if not os.path.exists(CFG_FILENAME):  # Create the file and populate with default values if it doesn't exist.
         save_calibration_data(CAL_1, CAL_2)
 
-    with open(CFG_FILENAME, newline='') as f:
+    with open(CFG_FILENAME, "r") as f:
         reader = list(csv.reader(f))
-        pt1 = CalPt(reader[0][0], reader[0][1], reader[0][2])
-        pt2 = CalPt(reader[1][0], reader[1][1], reader[1][2])
+        pt1 = CalPt(float(reader[0][0]), float(reader[0][1]), float(reader[0][2]))
+        pt2 = CalPt(float(reader[1][0]), float(reader[1][1]), float(reader[1][2]))
 
-        ph_sensor.calibrate_all(pt1, pt2)
+    ph_sensor.calibrate_all(pt1, pt2)
 
     # Or, call `calibrate` with the sensor in the appropriate buffer solution.
     # This will automatically use voltage and temperature.
